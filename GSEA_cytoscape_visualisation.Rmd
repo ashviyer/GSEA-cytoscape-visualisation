@@ -1,0 +1,339 @@
+---
+title: "GSEA on pathways and cytoscape visualisation"
+author: "Aishwarya"
+date: "2023-03-17"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+if(!"knitr" %in% installed.packages()){
+  install.packages("knitr")
+}
+library(knitr)
+knitr:::input_dir()
+```
+
+
+
+```{r}
+##load packages 
+library(RCy3)
+library(tidyverse)
+library(dplyr)
+library(msigdbr)
+library(clusterProfiler)
+```
+
+
+```{r cars}
+#import data: containing logFC, p-value, adjusted p-value and gene ids. 
+
+psvdvshnl<- read.delim("psvdvshnl.txt",header=TRUE)
+
+```
+
+
+
+```{r}
+##create a genelist for GSEA
+#ranking gene on p-value
+psvdvshnl$ranking<-psvdvshnl$logFC*-log10(psvdvshnl$P.Value)
+#ranking on product of logFC*-log10(adjusted p-value)
+psvdvshnl$ranking_alt<-psvdvshnl$logFC*-log10(psvdvshnl$adj.P.Val)
+
+#select the ranking: logFC*-log10(adjusted p-value)
+geneList= psvdvshnl[,8]
+#add entrex gene id as gene names
+names(geneList) = as.character(rownames(psvdvshnl))
+#sort on decreasing order
+geneList = sort(geneList,decreasing = TRUE)
+```
+
+
+
+```{r}
+#msigdb gene sets
+
+biocarta_gene_sets = msigdbr(species = "human", category = "C2", subcategory = "CP:BIOCARTA")
+kegg_gene_sets = msigdbr(species = "human", category = "C2", subcategory = "CP:KEGG")
+pid_gene_sets = msigdbr(species = "human", category = "C2", subcategory = "CP:PID")
+reactome_gene_sets = msigdbr(species = "human", category = "C2", subcategory = "CP:REACTOME")
+wikipathways_gene_sets = msigdbr(species = "human", category = "C2", subcategory = "CP:WIKIPATHWAYS")
+```
+
+
+```{r}
+##combine the WikiPathway, Reactome and KEGG gene sets
+pathway_gene_sets<-rbind(wikipathways_gene_sets, kegg_gene_sets, reactome_gene_sets)
+
+
+##process the gene set as the input for the GSEA
+pathway_gene_sets<- pathway_gene_sets %>%
+     dplyr::select(gs_exact_source, entrez_gene, gs_description, gs_subcat) %>%
+    dplyr::rename(ont = gs_exact_source, gene = entrez_gene, description = gs_description, source = gs_subcat )
+
+pathway_gene_sets   
+  
+```
+
+```{r}
+##GSEA 
+pathway_gsea<-GSEA(geneList,
+                   TERM2GENE = pathway_gene_sets,
+                   maxGSSize = 500,
+                   minGSSize = 100,
+                   seed = TRUE,
+                   by = "fgsea",
+                   pAdjustMethod ="fdr",
+                   pvalueCutoff = 0.05
+  
+)
+head(pathway_gsea,30)
+```
+
+
+
+```{r cars}
+#import the clusterprofiler enrichment output
+pathway_names<-data.frame(pathway_gsea@result[["ID"]])
+
+
+##create a list including the pathways enriched and their genesets
+complete=list()
+for (pathways in pathway_names$pathway_gsea.result...ID...){
+complete[[pathways]]<-data.frame(genes = pathway_gsea@geneSets[[pathways]],
+                                 pathway_id = rep(c(pathways), each = nrow(complete[[pathways]])))
+  
+}
+```
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+##Create a dataframe with pathways and genesets
+
+pathway_data<-bind_rows(complete)
+
+```
+
+
+```{r}
+##calculate no of genes up and down regulated significantly: up : 1 and down:2 nd unchanged:0
+psvdvshnl$names<-rownames(psvdvshnl)
+psvdvshnl$condition[psvdvshnl$logFC >= 1 & psvdvshnl$adj.P.Val < 0.05] <- 1
+psvdvshnl$condition[psvdvshnl$logFC <= -1 & psvdvshnl$adj.P.Val < 0.05] <- 2
+psvdvshnl$condition[is.na(psvdvshnl$condition)]<- 0
+
+
+##merging the two dataframes based on gene ids
+merged_data<-merge(pathway_data, psvdvshnl, by.x = "genes", by.y = "names", all.x = TRUE)
+
+
+#counting frequencies
+Counting<- data.frame(with(merged_data, unclass(table(pathway_id, condition))))
+
+##calculating the total genes in a geneset
+Counting$total<-Counting$`not-changed`+Counting$`up-sig`+Counting$`down-sig`
+##renaming the columns
+colnames(Counting)<-c("not-changed", "up-sig", "down-sig", "total")
+```
+
+```{r}
+
+Counting$id<-rownames(Counting)
+
+##Adding description for the pathway id
+pathway_ont<-merge(Counting, pathway_gene_sets[,c(1,3,4)], by.x = "id", by.y = "ont", all.x = TRUE)
+pathway_ont<-pathway_ont%>%
+  distinct()
+
+##Adding additonal columns
+pathway_ont$logFC<-c(rep(c(NA), each = nrow(pathway_ont)))
+pathway_ont$AveExpr<-c(rep(c(NA), each = nrow(pathway_ont)))
+pathway_ont$t<-c(rep(c(NA), each = nrow(pathway_ont)))
+pathway_ont$P.Value<-c(rep(c(NA), each = nrow(pathway_ont)))
+pathway_ont$adj.P.Val<-c(rep(c(NA), each = nrow(pathway_ont)))
+pathway_ont$B<-c(rep(c(NA), each = nrow(pathway_ont)))
+pathway_ont$condition<-c(rep(c(NA), each = nrow(pathway_ont)))
+pathway_ont$names<-c(rep(c(NA), each = nrow(pathway_ont)))
+rownames(pathway_ont)<-pathway_ont$id
+```
+
+```{r}
+##Adding additonal columns
+psvdvshnl$id <- c(rep(c(NA), each = c(nrow(psvdvshnl))))
+psvdvshnl$`up-sig` = c(rep(c(NA), each = c(nrow(psvdvshnl))))
+psvdvshnl$`down-sig`<-c(rep(c(NA), each = c(nrow(psvdvshnl))))
+psvdvshnl$`not-changed`<-c(rep(c(NA), each = c(nrow(psvdvshnl))))
+psvdvshnl$total<-c(rep(c(NA), each = c(nrow(psvdvshnl))))
+psvdvshnl$description<-c(rep(c(NA), each = c(nrow(psvdvshnl))))
+psvdvshnl$source<-c(rep(c(NA), each = c(nrow(psvdvshnl))))
+psvdvshnl$ranking<-NULL
+psvdvshnl$ranking_alt<-NULL
+```
+
+```{r}
+#remove rows of NAs from the data
+merged_data<-merged_data[complete.cases(merged_data),]
+
+##create edge table
+combined_pathways<-as.data.frame(merged_data[,1:2])
+
+##node table
+gene_id<-data.frame(id=unique(merged_data$genes),
+                    group = c(replicate(2130, "Gene")))
+pathway_id<-data.frame(id=pathway_ont$id,
+                       group=pathway_ont$source)
+node_table<-data.frame(id = rbind(gene_id, pathway_id))
+colnames(node_table)<-c("id", "group")
+
+```
+
+
+```{r}
+#combine the pathway and gene table
+cytoscape_table<-rbind(psvdvshnl, pathway_ont)
+```
+
+
+```{r cars}
+##adding information of which genes are core enrichment genes for better visualisation
+leading_edge_genes<-tibble(pathway_gsea@result[["core_enrichment"]])
+colnames(leading_edge_genes)<- c("core_enrichment")
+
+#unclass the strings separated by tab delimiter
+leading_edge<-as.data.frame(leading_edge_genes%>%separate_longer_delim(core_enrichment, delim="/"))
+#remove duplicate rows
+leading_edge<-leading_edge%>%distinct()
+#add '1' for genes that are leading edge genes
+leading_edge$core_enrichment_value<-1
+
+##Add this information into the final table
+leading_match<-match(cytoscape_table$names, leading_edge$core_enrichment)
+cytoscape_table$core_enrichment_value<-leading_edge$core_enrichment_value[leading_match]
+
+##replace the NAs in the "core_enrichment" column with 0.
+cytoscape_table$core_enrichment_value[is.na(cytoscape_table$core_enrichment_value)]<-0
+```
+
+```{r}
+cytoscapePing()
+if("cytargetlinker" %in% commandsHelp("")) print("Success: the CyTargetLinker app is installed") else print("Warning: CyTargetLinker app is not installed. Please install the CyTargetLinker app before proceeding.")
+```
+```{r}
+##Node table: Gene ID (Entrez) and Pathway Ids( KEGG, Reactome and WikiPathways)
+
+pathway_gene_nodes <- data.frame(id=node_table$id,
+                        group= node_table$group,
+                        stringsAsFactors = FALSE)
+
+
+# Edges : Gene-pathway associations
+pathway_gene_edges <- data.frame(source=combined_pathways$genes,
+                        target=combined_pathways$pathway_id,
+                        interaction=replicate(nrow(combined_pathways), "contains"),
+                        stringsAsFactors = FALSE)
+##create network in Cytoscape
+createNetworkFromDataFrames(pathway_gene_nodes, pathway_gene_edges, title="GSEA pathways", collection="GSEA")
+```
+
+
+```{r}
+##load node table data 
+loadTableData(cytoscape_table)
+```
+
+
+```{r}
+#set the node color based on log fold change
+setNodeColorDefault('#FFFFFF')
+column <- 'logFC'
+    control.points <- c (-3.0, 0.0, 3.0)
+    colors <-  c('#334CFF', '#FFFFFF', '#FD5903')
+    setNodeColorMapping (column, control.points, colors)
+```
+
+
+```{r}
+##for visualisation purposes only select genes which are leading edge genes
+createColumnFilter(filter.name='gene selection', column='group', "Gene", "IS")
+createColumnFilter(filter.name='leading_edge_filter', column='core_enrichment_value', 1.0, "IS_NOT")
+createCompositeFilter('combined filter', c('gene selection', 'leading_edge_filter'))
+
+
+##remove the selected nodes
+deleteSelectedNodes()
+```
+
+
+
+```{r}
+##set the node shape 
+getNodeShapes()   # diamond, ellipse, trapezoid, triangle, etc.
+    column <- 'group'
+    values <- c('Gene','CP:KEGG', 'CP:REACTOME', 'CP:WIKIPATHWAYS')
+    shapes <- c('RECTANGLE', 'ELLIPSE' , 'ELLIPSE', 'ELLIPSE')
+    setNodeShapeMapping(column, values, shapes)
+```
+
+```{r}
+##Adding the pie chart to pathway nodes to visualise the down-regulated, not -changed and the up-regulated genes.
+setNodeCustomPieChart(c("down.sig","not.changed","up.sig"), colors = c('#334CFF', '#FFFFFF', '#FD5903') )
+
+lockNodeDimensions(TRUE)
+```
+
+
+```{r}
+##set the node size
+size<-c(20,100,100,100)
+setNodeSizeMapping('group', mapping.type = "d", values, size)
+```
+
+
+```{r}
+#set the node label: only set for the pathway nodes
+setNodeLabelMapping("description")
+
+#set the node position
+setNodeCustomPosition(nodeAnchor = "C", graphicAnchor = "C", justification = "c")
+
+#set the node label font size
+setNodeFontSizeDefault(40)
+
+#set the font style of the node label
+setNodeFontFaceDefault("Arial,Rounded,Bold,45")
+```
+
+```{r}
+#set the node border width
+border_width=c(0,20,20,20)
+setNodeBorderWidthMapping('group', mapping.type = "d", values, border_width)
+```
+
+
+```{r}
+#set the node border color: for visualising the pathway databases
+border_color=c('#FFFFFF',"#FF33F9", "#1D9B1D", "#D35400" )
+setNodeBorderColorMapping('group', mapping.type = "d", values, border_color)
+```
+
+
+
+```{r}
+#set the edge color
+setEdgeColorDefault("#D7DBDD")
+```
+
+
+```{r}
+#set the layout but recommend the yfiles organic layout.
+getLayoutNames()
+layoutNetwork('kamada-kawai')
+```
+
+
+
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
