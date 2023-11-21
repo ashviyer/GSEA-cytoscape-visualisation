@@ -40,7 +40,7 @@ if(!require(Hmisc)) {
 ```{r cars}
 #import data: containing logFC, p-value, adjusted p-value and gene ids. 
 
-psvdvshnl<- read.delim("../psvdvshnl.txt",header=TRUE, row.names = 1)
+psvdvshnl<- read.delim("../DEG analysis/psvdvshnl.txt",header=TRUE, row.names = 1)
 
 ```
 
@@ -103,8 +103,8 @@ pathway_gene_sets
 ##GSEA 
 pathway_gsea<-GSEA(geneList,
                    TERM2GENE = pathway_gene_sets,
-                   maxGSSize = 500,
-                   minGSSize = 100,
+                   maxGSSize = 1000,
+                   minGSSize = 30,
                    seed = TRUE,
                    by = "fgsea",
                    pAdjustMethod ="fdr",
@@ -112,6 +112,12 @@ pathway_gsea<-GSEA(geneList,
   
 )
 head(pathway_gsea,30)
+```
+```{r}
+edo<-pairwise_termsim(pathway_gsea)
+png("emapplot.png", width = 700, height = 700)
+emapplot(edo, showCategory=34, cluster.params = list(n = 4, cluster =F, layout="kk", min =0.6))
+dev.off()
 ```
 
 
@@ -197,6 +203,10 @@ rownames(pathway_ont)<-pathway_ont$id
 NES_dataframe<-data.frame(id = pathway_gsea@result[["ID"]],
                           NES_score= pathway_gsea@result[["NES"]])
 pathway_ont<-merge(pathway_ont, NES_dataframe, by.x="id", by.y="id", all.x=TRUE)
+
+ setsize_dataframe<-data.frame(id = pathway_gsea@result[["ID"]],
+                          setSize= pathway_gsea@result[["setSize"]])
+pathway_ont<-merge(pathway_ont, setsize_dataframe, by.x="id", by.y="id", all.x=TRUE)
 ```
 
 
@@ -211,6 +221,7 @@ psvdvshnl$total<-c(rep(c(NA), each = c(nrow(psvdvshnl))))
 psvdvshnl$description<-c(rep(c(NA), each = c(nrow(psvdvshnl))))
 psvdvshnl$source<-c(rep(c(NA), each = c(nrow(psvdvshnl))))
 psvdvshnl$NES_score<-c(rep(c(NA), each = c(nrow(psvdvshnl))))
+psvdvshnl$setSize<-c(rep(c(NA), each = c(nrow(psvdvshnl))))
 psvdvshnl$ranking<-NULL
 psvdvshnl$ranking_alt<-NULL
 ```
@@ -269,18 +280,49 @@ for (i in 1:nrow(pathway_ids)){
   
 
 pathway_ids$mutual_nodes[i]<-length(intersect(list_df[[pathway_ids[i,1]]][["genes"]], list_df[[unlist(pathway_ids[i,3])]][["genes"]]));
+
+pathway_ids$union_node[i]<-length(union(list_df[[pathway_ids[i,1]]][["genes"]], list_df[[unlist(pathway_ids[i,3])]][["genes"]]));
   
 }
 
-colnames(pathway_ids)<-c("source", "database", "target", "mutual_nodes")
+colnames(pathway_ids)<-c("source", "database", "target", "mutual_nodes", "union_nodes" )
 
+```
+
+```{r}
+setsize_table<-subset(pathway_ont, select = c("id", "setSize"))
+
+setsize_match<-match(pathway_ids$source, setsize_table$id)
+pathway_ids$source_setsize<-setsize_table[setsize_match,]
+
+setsize_match_target<-match(pathway_ids$target$value, setsize_table$id)
+pathway_ids$target_setsize<-setsize_table[setsize_match_target,]
+
+pathway_ids$source_setsize$id<-NULL
+pathway_ids$target_setsize$id<-NULL
+pathway_ids$min_setsize<-pmin(pathway_ids$source_setsize, pathway_ids$target_setsize)
+```
+
+```{r}
+##overlap coefficient calculation 
+
+pathway_ids$overlap_coef<- pathway_ids$mutual_nodes/pathway_ids$min_setsize$setSize
+
+
+pathway_ids$jaccard_coef<- pathway_ids$mutual_nodes/pathway_ids$union_nodes
+combined_constant = 0.5;
+
+pathway_ids$combined_coef<- (combined_constant * pathway_ids$overlap_coef) + ((1-combined_constant) * pathway_ids$jaccard_coef)
+
+#pathway_ids_subset<-subset(pathway_ids, overlap_coef > 0.5)
 ```
 
 
 ```{r}
 ##make the edge table
-pathway_ids<-subset(pathway_ids, mutual_nodes>0)
-pathway_ids<-pathway_ids[-c(which(pathway_ids$source==pathway_ids$target)),]
+pathway_ids_subset<-pathway_ids
+pathway_ids_subset<-pathway_ids_subset[-c(which(pathway_ids_subset$source==pathway_ids_subset$target$value)),]
+#pathway_ids_subset<-subset(pathway_ids_subset, overlap_coef$setSize == 1)
 
 ```
 
@@ -317,15 +359,15 @@ pathway_gene_nodes <- data.frame(id=pathway_id$id,
 
 
 # Edges : Gene-pathway associations
-pathway_gene_edges <- data.frame(source=pathway_ids$source,
-                        target=pathway_ids$target,
-                        weight = pathway_ids$mutual_nodes,
-                        interaction=replicate(nrow(pathway_ids), "contains"),
+pathway_gene_edges <- data.frame(source=pathway_ids_subset$source,
+                        target=pathway_ids_subset$target$value,
+                        weight = pathway_ids_subset$jaccard_coef,
+                        interaction=replicate(nrow(pathway_ids_subset), "contains"),
                         stringsAsFactors = FALSE)
 
 colnames(pathway_gene_edges)<-c("source", "target", "weight", "interaction" )
 ##create network in Cytoscape
-createNetworkFromDataFrames(pathway_gene_nodes, pathway_gene_edges, title="GSEA pathway nodes cluster", collection="GSEA")
+createNetworkFromDataFrames(pathway_gene_nodes, pathway_gene_edges, title="GSEA pathway nodes cluster-jaccard", collection="GSEA")
 ```
 
 
