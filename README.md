@@ -1,9 +1,9 @@
 # GSEA-cytoscape-visualisation
 
-R scripts for visualisation of gene set enrichment results from 'clusterProfiler' R package on Cytoscape. 
+Two functions for visualisation scripts are available.
 
-Two different types of visualisation scripts are available.
+cyemapplot-gsea : function for network visualisation from GSEA output.
 
-node-viz : for visualising pathway nodes from enrichment analysis
+cyemapplot-ora : function for network visualisation from ORA output.
 
-leading-edge-viz : for visualising pathway nodes and leading edge genes from GSEA.
+testing.R script- Example enrichment analysis and implementing cyemapplot functions to visualise network on Cytoscape.
