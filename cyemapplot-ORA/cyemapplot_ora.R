@@ -83,7 +83,6 @@ gs.info.basic <- function(gse, res.gs.df, show_category) {
     mutate(bgPathway = as.numeric(bgPathway), bgAllPathways = as.numeric(bgAllPathways))
   
   enriched.pathways$otherGenes <- enriched.pathways$bgPathway - enriched.pathways$genesPathway
-  #enriched.pathways <- enriched.pathways[,c(1,4,2,8)]
   return(enriched.pathways)
 }
 
