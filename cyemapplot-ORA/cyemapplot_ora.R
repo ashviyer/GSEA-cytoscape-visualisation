@@ -19,6 +19,8 @@ cy.emapplot <- function(gse, analysis.name = "cy_emapplot", show_category=30, mi
   }
   
   gse.sim.filt <- gse@termsim
+  colnames(gse.sim.filt) <- res.gs.df$ID
+  rownames(gse.sim.filt) <- res.gs.df$ID
   gse.sim.filt[gse.sim.filt < min_edge] <- 0
   
   graph <- igraph::graph_from_adjacency_matrix(gse.sim.filt, weighted=TRUE, mode="undirected", diag = FALSE)
@@ -72,7 +74,7 @@ gs.info.basic <- function(gse, res.gs.df, show_category) {
   } else {
     enriched.pathways <- res.gs.df
   }
-  enriched.pathways <- enriched.pathways[,c(1,3,4,5,6)]
+  enriched.pathways <- enriched.pathways[,c(1,2,3,4,5,6)]
   enriched.pathways <- enriched.pathways %>%
     separate(GeneRatio, into = c("genesPathway", "genesAllPathways"), sep = "/") %>%
     mutate(genesPathway = as.numeric(genesPathway), genesAllPathways = as.numeric(genesAllPathways))
@@ -81,7 +83,7 @@ gs.info.basic <- function(gse, res.gs.df, show_category) {
     mutate(bgPathway = as.numeric(bgPathway), bgAllPathways = as.numeric(bgAllPathways))
   
   enriched.pathways$otherGenes <- enriched.pathways$bgPathway - enriched.pathways$genesPathway
-  enriched.pathways <- enriched.pathways[,c(1,4,2,8)]
+  #enriched.pathways <- enriched.pathways[,c(1,4,2,8)]
   return(enriched.pathways)
 }
 
