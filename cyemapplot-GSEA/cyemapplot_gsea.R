@@ -34,12 +34,37 @@ cy.emapplot <- function(gse, analysis.name = "cy_emapplot", show_category=30, mi
 }
 
 gs.add.degs <- function(gse, gs.info, degs_data) {
-  degs_data$condition <- 0
-  degs_data$condition[degs_data$log2FC > 0] <- 1
-  degs_data$condition[degs_data$log2FC < 0] <- 2
-  degs_data$condition[is.na(degs_data$condition)]<- 0
+  up <- degs_data[degs_data$log2FC > 0,]
+  down <- degs_data[degs_data$log2FC < 0,]
   
-  gs.info<-merge(pathway_data, psvdvshnl, by.x = "genes", by.y = "names", all.x = TRUE)
+  # Extract all gene sets from the enrichment result object
+  gene_sets <- gse@geneSets
+  # Initialize a list to store the counts
+  gene_counts_list_up <- list()
+  # Initialize a list to store the counts
+  gene_counts_list_down <- list()
+  
+  # Iterate over each gene set and count how many genes from my_genes are in the set
+  for (set_name in names(gene_sets)) {
+    genes_in_set <- gene_sets[[set_name]]
+    gene_counts_list_up[[set_name]] <- sum(genes_in_set %in% up$ID)
+    gene_counts_list_down[[set_name]] <- sum(genes_in_set %in% down$ID)
+  }
+  
+  # Convert the list to a data frame for easier viewing
+  gene_counts_df_up <- data.frame(
+    ID = names(gene_counts_list_up),
+    up = unlist(gene_counts_list_up)
+  )
+  
+  # Convert the list to a data frame for easier viewing
+  gene_counts_df_down <- data.frame(
+    ID = names(gene_counts_list_down),
+    down = unlist(gene_counts_list_down)
+  )
+  
+  gs.info <- merge(gs.info, gene_counts_df_up, by = "ID", keep.x = TRUE)
+  gs.info <- merge(gs.info, gene_counts_df_down, by = "ID", keep.x = TRUE)
   return (gs.info)
 }
 
@@ -49,29 +74,12 @@ gs.info.basic <- function(gse, res.gs.df, show_category) {
   } else {
     enriched.pathways <- res.gs.df
   }
-  complete=list()
-  for (pathways in res.gs.df$ID){
-    complete[[pathways]]<-data.frame(genes = edo.sim@geneSets[[pathways]],
-                                     pathway_id = rep(c(pathways), each = nrow(complete[[pathways]])))
-    
-  }
-  ##Create a dataframe with pathways and genesets
-  pathway_data <- bind_rows(complete)
-  enriched.pathways <- enriched.pathways[,c(1,2,3,4,5,6)]
-  enriched.pathways <- enriched.pathways %>%
-    separate(GeneRatio, into = c("genesPathway", "genesAllPathways"), sep = "/") %>%
-    mutate(genesPathway = as.numeric(genesPathway), genesAllPathways = as.numeric(genesAllPathways))
-  enriched.pathways <- enriched.pathways %>%
-    separate(BgRatio, into = c("bgPathway", "bgAllPathways"), sep = "/") %>%
-    mutate(bgPathway = as.numeric(bgPathway), bgAllPathways = as.numeric(bgAllPathways))
-  
-  enriched.pathways$otherGenes <- enriched.pathways$bgPathway - enriched.pathways$genesPathway
-  #enriched.pathways <- enriched.pathways[,c(1,4,2,8)]
+  enriched.pathways <- enriched.pathways[,c(1,2,3,4,5,6,7)]
   return(enriched.pathways)
 }
 
 style.network <- function(gs.info, withdata = FALSE) {
   RCy3::importVisualStyles("styles.xml")
-  if(withdata) { style.name <- "cy.emapplot.data" } else { style.name <- "cy.emapplot.nodata" }
+  if(withdata) { style.name <- "cyemapplot.gsea.data" } else { style.name <- "cyemapplot.gsea.data" }
   RCy3::setVisualStyle(style.name)
 }

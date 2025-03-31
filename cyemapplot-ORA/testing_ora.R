@@ -32,10 +32,10 @@ edo_go <- enrichGO(sig.deg$ID,
 
 # OPTION 1 - no gene expression data
 edo.sim <- pairwise_termsim(edo_go)
-cy.emapplot(edo.sim, analysis.name = "emapplot-nodata", min_edge = 0.5)
+cy.emapplot(edo.sim, analysis.name = "emapplot-ora-nodata", min_edge = 0.5)
 
 # OPTION 2 - with gene expression data (differentially expressed genes)
-cy.emapplot(edo.sim, analysis.name = "emapplot-withdata", degs_data = degs_data)
+cy.emapplot(edo.sim, analysis.name = "emapplot-ora-withdata", degs_data = degs_data)
 
 
 
