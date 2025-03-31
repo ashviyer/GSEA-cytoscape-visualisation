@@ -27,15 +27,6 @@ ego_go<-gseGO(geneList,
 # OPTION 1 - no gene expression data
 edo.sim <- pairwise_termsim(ego_go)
 
-cy.emapplot(edo.sim, analysis.name = "emapplot-nodata", min_edge = 0.5)
-
 # OPTION 2 - with gene expression data (differentially expressed genes)
-cy.emapplot(edo.sim, analysis.name = "emapplot-withdata",show_category=93, degs_data = degs_data)
+cy.emapplot(edo.sim, analysis.name = "emapplot-gsea-withdata",show_category=97, degs_data = degs_data)
 
-##Adding the pie chart to pathway nodes to visualise the down-regulated, not -changed and the up-regulated genes.
-setNodeCustomPieChart(c("down","up"), colors = c("#67A9CF","#EF8A62"), style.name = "cyemapplot.gsea.data" )
-setEdgeColorDefault("#D7DBDD", style.name = "cyemapplot.gsea.data")
-#to do 
-#1.documentation
-#2. test on gsea output
-#3. r.project for deg and enrichment output or use th eones from clusterprofiler
