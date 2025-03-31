@@ -6,4 +6,4 @@ cyemapplot-gsea : function for network visualisation from GSEA output.
 
 cyemapplot-ora : function for network visualisation from ORA output.
 
-testing.R script- Example enrichment analysis and implementing cyemapplot functions to visualise network on Cytoscape.
+testing_gsea.R and testing_ora.R script- Example enrichment analysis and implementing cyemapplot functions to visualise network on Cytoscape.
