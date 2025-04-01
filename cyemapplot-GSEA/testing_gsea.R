@@ -3,12 +3,15 @@ library(enrichplot)
 library(RCy3)
 library(tidyverse)
 library(dplyr)
+library(DOSE)
 
-setwd("C:/Users/aishw/Documents/git-repositories/GSEA-cytoscape-visualisation/cyemapplot-GSEA")
+#setting the working directory 
+setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
 
+#call the gsea vizualisation function
 source("cyemapplot_gsea.R")
 
-library(DOSE)
+#get deg data 
 data(geneList, package="DOSE")
 
 ##deg data

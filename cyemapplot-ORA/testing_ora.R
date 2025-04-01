@@ -3,12 +3,15 @@ library(enrichplot)
 library(RCy3)
 library(tidyverse)
 library(dplyr)
+library(DOSE)
 
-setwd("C:/Users/aishw/Documents/git-repositories/GSEA-cytoscape-visualisation/cyemapplot-ORA")
+#setting the working directory 
+setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
 
+#call the ora vizualisation function
 source("cyemapplot_ora.R")
 
-library(DOSE)
+#get deg data
 data(geneList, package="DOSE")
 
 ##deg data
