@@ -24,9 +24,9 @@ ego_go<-gseGO(geneList,
               maxGSSize = 100,
               minGSSize = 50)
 
-# OPTION 1 - no gene expression data
+#pairwise 
 edo.sim <- pairwise_termsim(ego_go)
 
 # OPTION 2 - with gene expression data (differentially expressed genes)
-cy.emapplot(edo.sim, analysis.name = "emapplot-gsea-withdata",show_category=97, degs_data = degs_data)
+cy.emapplot(edo.sim, analysis.name = "emapplot-gsea-withdata",show_category=89, degs_data = degs_data)
 
