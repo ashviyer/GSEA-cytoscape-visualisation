@@ -20,7 +20,7 @@ degs_data$ID <- rownames(degs_data)
 colnames(degs_data)<- c("log2FC", "ID")
 
 ##genes
-sig.deg<- subset(degs_data, abs(log2FC) > 3 )
+sig.deg<- subset(degs_data, abs(log2FC) > 1 )
 
 #enrichment analysis
 edo_go <- enrichGO(sig.deg$ID, 
@@ -43,7 +43,8 @@ ego_go<-gseGO(geneList,
 
 #pairwise 
 edo.gsea.sim <- pairwise_termsim(ego_go)
-
-cyemapplot(edo.ora.sim, show_category = 30, min_edge = 0.8)
-cyemapplot(edo.gsea.sim, show_category = 15, min_edge = 0.8)
+y <- as.data.frame(ego_go)
+source("cyemapplot.R")
+cyemapplot(edo.ora.sim, show_category = 15, min_edge = 0.8, visualization="deg", degs_data = sig.deg)
+cyemapplot(edo.gsea.sim, show_category = 15, min_edge = 0.8, visualization="deg", degs_data = sig.deg)
 
