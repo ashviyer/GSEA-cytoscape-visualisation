@@ -6,7 +6,8 @@ cyemapplot <- function(ea_sim, analysis_name = "Enrichment", show_category=30, m
     ea.df.filt <- ea.df
   }
 
-  if(inherits(ea_sim, "gseaResult")) {
+  is_gsea <- inherits(ea_sim, "gseaResult")
+  if(is_gsea) {
     gs.info <- gsea.info.basic(ea.df.filt)
     method <- "GSEA"
     if(analysis_name == "Enrichment") analysis_name <- "Enrichment_GSEA"
@@ -23,7 +24,7 @@ cyemapplot <- function(ea_sim, analysis_name = "Enrichment", show_category=30, m
   RCy3::loadTableData(gs.info, data.key.column = "Description", table.key.column = "id")
   if(visualization == "basic") { basic_viz() }
   else if (visualization == "pie") { pie_chart_viz() }
-  else if (visualization == "deg") { deg_viz(degs_data, gs.info) } # TODO: check if deg_data is added for deg visualization
+  else if (visualization == "deg") { deg_viz(degs_data, gs.info, is_gsea=is_gsea) } # TODO: check if deg_data is added for deg visualization
 }
 
 basic_viz <- function() {
@@ -33,11 +34,10 @@ basic_viz <- function() {
     RCy3::setNodeSizeMapping(table.column = "setSize", table.column.values = c(0, 300), sizes = c(10,60), mapping.type = "c", style.name = "cyemapplot_basic")
     RCy3::setNodeShapeDefault("ELLIPSE", "cyemapplot_basic")
     RCy3::setNodeBorderWidthDefault(3, "cyemapplot_basic")
-    RCy3::setNodeBorderColorMapping("NES_cat",table.column.values = c("up", "down"), colors = c("#D6604D","#4393C3"), mapping.type = "d", default.color = "#CCCCCC", style.name = "cyemapplot_basic")
     RCy3::setNodeColorDefault("white", "cyemapplot_basic")
     RCy3::setNodeLabelPositionDefault(new.nodeAnchor = "S",new.graphicAnchor = "N", new.justification = "c", new.xOffset = 0, new.yOffset = 0, style.name = "cyemapplot_basic")
     RCy3::setEdgeColorDefault("#CCCCCC", style.name = "cyemapplot_basic")
-  }
+      }
   RCy3::setVisualStyle("cyemapplot_basic")
 }
 
@@ -52,7 +52,7 @@ pie_chart_viz <- function() {
   RCy3::setVisualStyle("cyemapplot_piechart")
 }
 
-deg_viz <- function(degs_data, gs.info) {
+deg_viz <- function(degs_data, gs.info, is_gsea = FALSE) {
   up <- degs_data[degs_data$log2FC > 0,]
   down <- degs_data[degs_data$log2FC < 0,]
   
@@ -74,6 +74,21 @@ deg_viz <- function(degs_data, gs.info) {
   if(!("cyemapplot_degs" %in% RCy3::getVisualStyleNames())) {
     #TODO: fix for GSEA - should not use core_enrichment but all genes in the pathway
     RCy3::copyVisualStyle(from.style = "cyemapplot_basic", to.style = "cyemapplot_degs")
+    node.cols <- RCy3::getTableColumnNames("node")
+    
+    # Only for GSEA (i.e., only when NES_cat exists)
+    if (is_gsea && ("NES_cat" %in% node.cols)) {
+      RCy3::setNodeBorderColorMapping(
+        "NES_cat",
+        table.column.values = c("up", "down"),
+        colors = c("#D6604D","#4393C3"),
+        mapping.type = "d",
+        default.color = "#CCCCCC",
+        style.name = "cyemapplot_degs"
+      )
+    } else {
+      RCy3::setNodeBorderColorDefault("#CCCCCC", style.name = "cyemapplot_degs")
+    }
     RCy3::setNodeCustomPieChart(columns = c("rest", "n_up","n_down"), colors = c("#FFFFFF","#D6604D","#4393C3"), slot = 2, startAngle = 90, style.name = "cyemapplot_degs")
   }
   RCy3::setVisualStyle("cyemapplot_degs")
