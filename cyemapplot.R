@@ -1,9 +1,9 @@
 cyemapplot <- function(ea_sim, analysis_name = "Enrichment", show_category=30, min_edge=0.2,
                        degs_data = NULL, visualization = "basic",
                        ig_layout = igraph::layout_with_kk, layout_scale = 500,
-                       filt_components = 1,
-                       plot_components = TRUE,          # <--- new
-                       top_components = 5,   # <--- add this (min component size)
+                       min_cluster_size = 1,
+                       plot_clusters = FALSE,          # <--- new
+                       top_clusters = 5,   # <--- add this (min component size)
                        ...) {
   
   ea.df <- as.data.frame(ea_sim)
@@ -24,10 +24,10 @@ cyemapplot <- function(ea_sim, analysis_name = "Enrichment", show_category=30, m
   
   # ---- filter components by size ----
   comp <- igraph::components(graph)
-  keep_comps <- which(comp$csize >= filt_components)
+  keep_comps <- which(comp$csize >= min_cluster_size)
   
   if (length(keep_comps) == 0) {
-    stop("No components with size >= filt_components = ", filt_components)
+    stop("No components with size >= min_cluster_size = ", min_cluster_size)
   }
   
   nodes_to_keep <- which(comp$membership %in% keep_comps)
@@ -61,12 +61,12 @@ cyemapplot <- function(ea_sim, analysis_name = "Enrichment", show_category=30, m
   else if (visualization == "deg") deg_viz(degs_data, gs.info)
   
   # ---- COMPONENT SUBNETWORKS ----
-  if (plot_components) {
+  if (plot_clusters) {
     comp2 <- igraph::components(g_filtered)
     
     # order components by size (largest first)
     ord <- order(comp2$csize, decreasing = TRUE)
-    ord <- ord[seq_len(min(top_components, length(ord)))]
+    ord <- ord[seq_len(min(top_clusters, length(ord)))]
     
     for (i in seq_along(ord)) {
       comp_id <- ord[i]
